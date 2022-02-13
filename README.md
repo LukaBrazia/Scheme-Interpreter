@@ -2,8 +2,9 @@
 # Scheme Interpreter  
 
 ## Functionality 
-Support for load, define *(including recursion)*, if, cond, lambda and let expressions  
-let expressions by default behave as let* expressions do in kawa  
+Support for load, define *(including recursion)*, if, cond, lambda and let expressions
+let expressions by default behave as let* expressions do in kawa 
+Support for comments
 quote defined lists *'(1 2 3)* are NOT recursive, meaning each expression inside the quoted list will be evaluated, the list as a whole will not be 
 instead of *'((1 2) (3 4))* use *'('(1 2) '(3 4))*   
 ### Implemented Functions:
