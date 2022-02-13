@@ -72,6 +72,7 @@ class Interpreter:
             "expt" : Function(functions.expt),
             "sqrt" : Function(functions.sqrt),
             "reverse" : Function(functions.reverse),
+            "not" : Function(functions.notexp),
             "else" : True
         }        
         self.generate(functions.car, "a")
@@ -127,7 +128,7 @@ class Interpreter:
                     self.next()
                     file = None
                     try:
-                        file = open(filename, "r")
+                        file = open(filename, "r", encoding="utf-8")
                     except:
                         print("ERROR: File does not exist")
                         exit()
@@ -335,7 +336,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         file = None
         try:
-            file = open(sys.argv[1], "r")
+            file = open(sys.argv[1], "r", encoding="utf-8")
         except:
             print("ERROR: File does not exist")
             exit()

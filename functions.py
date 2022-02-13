@@ -271,3 +271,11 @@ def reverse(args):
     l2 = args[0].copy()
     l2.reverse()
     return l2
+
+def notexp(args):
+    if (len(args) != 1):
+        print("Incorrect number of arguments in call to not")
+        exit()
+    if isinstance(args[0], bool):
+        return not args[0]
+    return False
