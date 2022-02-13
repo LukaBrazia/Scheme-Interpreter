@@ -15,7 +15,7 @@ instead of *'((1 2) (3 4))* use *'('(1 2) '(3 4))*
 * or 
 * cdr
 * car
-* **Multi layered cdr and car _(eg. caaadr, cdadadr.)_ max of 10 layers, same as kawa 
+* **Multi layered cdr and car _(eg. caaadr, cdadadr.)_ max of 10 layers, same as kawa**
 * cons
 * append
 * map
