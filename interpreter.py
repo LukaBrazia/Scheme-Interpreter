@@ -1,9 +1,8 @@
 import re
-from select import select
 import sys
 import functions
-from functions import Function
-
+from functions import Function, kawaPrint
+from collections.abc import Hashable
 
 class Tokenizer:
     def __init__(self, text):
@@ -13,12 +12,15 @@ class Tokenizer:
             def func(_, token):
                 return (token, type)
             return func
+        def string(_, token):
+            return (token[1:-1], "string")
+
         scanner = re.Scanner([
             ("\s", None), # Whitespace
             (";[^;\n]*", None), # Comments
             ("'\s*\(", valid("raw_list")),
             ("\(", valid("list")),
-            ("\"[^\"]*\"|\'[^\"]*\'", valid("string")),
+            ("\"[^\"]*\"|\'[^\"]*\'", string),
             ("\)", valid("endl")),
             ("-?[0-9]+", lambda _, tok : (int(tok), "int")),
             ("-?[0-9]+\.[0-9]*|-?[0-9]*\.[0-9]+", lambda _, tok : (float(tok), "float")),
@@ -29,9 +31,7 @@ class Tokenizer:
         ])
         tokens, _ = scanner.scan(self.str)
         return tokens
-
-
-
+    
 
 class Interpreter:
     def __init__(self, tokens):
@@ -50,8 +50,44 @@ class Interpreter:
             "append": Function(functions.append),
             "map": Function(functions.mapexp),
             "apply" : Function(functions.apply),
-            "eval" : Function(functions.eval)
-        }
+            "eval" : Function(functions.eval),
+            "display" : Function(functions.display),
+            "null?" : Function(functions.null),
+            "length" : Function(functions.length),
+            "=" : Function(functions.num_eq),
+            "<" : Function(functions.num_lt),
+            "<=" : Function(functions.num_le),
+            ">" : Function(functions.num_gt),
+            ">=" : Function(functions.num_ge),
+            "equal?" : Function(functions.equal),
+            "zero?" : Function(functions.zero),
+            "remainder" : Function(functions.remainder),
+            "quotient" : Function(functions.quotient),
+            "newline" : Function(functions.newline),
+            "list" : Function(functions.ls),
+            "positive?" : Function(functions.positive),
+            "negative?" : Function(functions.negative),
+            "odd?" : Function(functions.odd),
+            "even?" : Function(functions.even),
+            "expt" : Function(functions.expt),
+            "sqrt" : Function(functions.sqrt),
+            "reverse" : Function(functions.reverse),
+            "else" : True
+        }        
+        self.generate(functions.car, "a")
+        self.generate(functions.cdr, "d")
+
+    def generate(self, func, str):
+        if len(str) == 10:
+            return
+        str1 = "a" + str
+        func1 = lambda params: functions.car([func(params)])
+        self.ids["c" + str1 + "r"] = Function(func1)
+        self.generate(func1, str1)
+        str2 = "d" + str
+        func2 = lambda params: functions.cdr([func(params)])
+        self.ids["c" + str2 + "r"] = Function(func2)
+        self.generate(func2, str2)
 
     def execute(self, type):
         return self.exp_list()
@@ -62,10 +98,12 @@ class Interpreter:
 
     def interpret_body(self, cli):
         while self.token_index != len(tokens):
+            if (self.peek() == None):
+                break
             if self.peek()[1] == "raw_list":
                 self.next()
                 message = self.raw_list()
-                if cli and message is not None: print(message)
+                if cli and message is not None: print(kawaPrint(message))
             elif self.peek()[1] == "list":
                 self.next()
                 if self.peek()[0] == "define":
@@ -74,17 +112,33 @@ class Interpreter:
                         self.next()
                         name = self.next()
                         if name[1] != "id":
-                            print("Expected an id")
+                            print("Expected a function name in define")
                             exit()
                         self.ids[name[0]] = Function(self.createFunc())
                         self.next()
                     else:
                         self.createVar()
+                elif self.peek()[0] == "load":
+                    self.next()
+                    if (self.peek()[1] != "string"):
+                        print("Expected a filename in load")
+                        exit()
+                    filename = self.next()[0]
+                    self.next()
+                    file = None
+                    try:
+                        file = open(filename, "r")
+                    except:
+                        print("ERROR: File does not exist")
+                        exit()
+                    str = file.read()
+                    tk = Tokenizer(str)
+                    newtokens = tk.get_tokens()
+                    self.tokens = self.tokens[:self.token_index] + newtokens + self.tokens[self.token_index:]
                 else:
                     message = self.exp_list()
-                    if cli and message is not None: print(message)
+                    if cli and message is not None: print(kawaPrint(message))
             else:
-                print(self.peek())
                 print("Expected a list")
                 exit()
 
@@ -99,7 +153,7 @@ class Interpreter:
             exit()
         self.next()
         self.ids[name] = val
-
+        return name
 
     def createFunc(self):
         params = {}
@@ -113,16 +167,23 @@ class Interpreter:
         self.next()
         self.next() 
         funcTokens = []
-        while self.peek()[1] != "endl":
+        brackets = 1
+        while brackets != 0:
             if self.peek() == None:
                 print("Expected a )")
                 exit()
+            elif self.peek()[1] in ("list", "raw_list"):
+                brackets += 1
+            elif self.peek()[1] == "endl":
+                brackets -= 1
             funcTokens.append(self.next())
-        funcTokens.append(self.next())
         def func(args):
+            if (len(args) != len(params)):
+                print("Incorrect number of aruments in function call")
+                exit()
             tempTokens = []
             for tok in funcTokens:
-                if tok[0] in params.keys():
+                if isinstance(tok[0], Hashable) and tok[0] in params.keys():
                     tempTokens.append((args[params[tok[0]]], ""))
                 else:
                     tempTokens.append(tok)
@@ -143,9 +204,45 @@ class Interpreter:
             return None
         tok = self.tokens[self.token_index]
         return tok
-    def exp(self):
-        pass
 
+    def skip_exp(self):
+        if self.peek()[1] in ("list", "raw_list"):
+            self.next()
+            while self.peek()[1] != "endl":
+                self.skip_exp()
+            self.next()
+        elif self.peek()[1] != "endl":
+            self.next()
+        else: 
+            return False
+        return True
+
+    def get_if(self):
+        exp = self.get_expression()
+        val = None
+        if exp:
+            val = self.get_expression()
+            self.skip_exp()
+        else:
+            self.skip_exp()
+            if self.peek()[1] != "endl":
+                val = self.get_expression()
+        return Function(lambda _ : val)
+
+    
+
+    def get_cond_st(self):
+        exp = self.get_expression()
+        val = None
+        if self.peek()[1] == "endl":
+            return Function(lambda _: exp)
+        if exp:
+            val = self.get_expression()
+            self.skip_exp()
+            return Function(lambda _ : val)
+        else:
+            self.skip_exp()
+    
     def get_expression(self):
         if self.peek()[1] == "list":
             self.next()
@@ -161,8 +258,49 @@ class Interpreter:
                 self.next()
                 func = Function(self.createFunc())
                 return Function(lambda _ : func)
+            elif self.peek()[0] == "if":
+                self.next()
+                return self.get_if()
+            elif self.peek()[0] == "cond":
+                self.next()
+                val = None
+                while self.peek()[1] != "endl":
+                    if self.peek()[1] != "list":
+                        print("Unexpected token in cond")
+                        exit()
+                    if val == None:
+                        self.next()
+                        val = self.get_cond_st()
+                        if self.peek()[1] != "endl":
+                            print("Unexpected token in cond")
+                            exit()
+                        self.next()
+                    else:
+                        self.skip_exp()
+                if val == None:
+                    return Function(lambda x : None)
+                return val
+            elif self.peek()[0] == "let":
+                self.next()
+                if self.next()[1] != "list":
+                    print("Expected a list of variables")
+                    exit()
+                params = []
+                while self.peek()[1] != "endl":
+                    if self.next()[1] != "list":
+                        print("Expected a list of variables")
+                        exit()
+                    params.append(self.createVar())
+                
+                self.next()
+                exp = self.get_expression()
+                for param in params:
+                    self.ids.pop(param)
+                return Function(lambda x : exp)
+                    
             else:
-                print(self.next[0] + " not defined")
+                print(self.peek())
+                print("ID not defined")
                 exit()
         else:
             return self.next()[0]
@@ -205,5 +343,19 @@ if __name__ == "__main__":
         tk = Tokenizer(str)
         tokens = tk.get_tokens()
         inp = Interpreter(tokens)
-        inp.interpret_body(True)
+        inp.interpret_body(False) #set to true if testing
         file.close()
+    else:
+        linenum = 1
+        inp = Interpreter([])
+        str = ""
+        while True:
+            str += "\n" + input(f"#|BetterKawa:{linenum}|# ")
+            linenum += 1
+            if (str.count("(") == str.count(")")):
+                tokens = Tokenizer(str).get_tokens()
+                inp.tokens = tokens
+                inp.token_index = 0
+                inp.interpret_body(True)
+                str = ""
+            
