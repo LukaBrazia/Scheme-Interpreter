@@ -42,7 +42,8 @@ instead of *'((1 2) (3 4))* use *'('(1 2) '(3 4))*
 * even? 
 * expt 
 * sqrt 
-* reverse 
+* reverse
+* not 
 * else 
 
 ## Usage
