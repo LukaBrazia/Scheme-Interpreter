@@ -46,8 +46,10 @@ instead of *'((1 2) (3 4))* use *'('(1 2) '(3 4))*
 ## Usage
 You have 2 options to invoke the interpreter 
 > python3 interpreter.py path/to/file/from/this/folder 
+
 will interpret the given file, will only output to console if a display function is used  
 > python3 interpreter.py  
+
 launches the interpreter in the console, allowing the user to write code there, will output the result of every evaluated statement  
 I've provided 4 test files, code for those files were taken from the freeuni paradigms 2021 repository  
 * test.scm and test3.scm test general functionality 
